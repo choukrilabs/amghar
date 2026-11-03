@@ -1,0 +1,6 @@
+{
+  "name": "Atlas 1870: Amghar of the High Atlas",
+  "description": "A 3D historical tribal management and strategy game set in the High Atlas mountains of Morocco in 1870. Build your fortified ighrem and agadir, manage terraced irrigation and seasonal harvests, navigate Makhzen politics, and trade or raid across neighboring valleys.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
