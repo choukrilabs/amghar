@@ -39,9 +39,11 @@ import {
   saveValleyState,
 } from './net/storage';
 import { ValleyCanvas } from './render/ValleyCanvas';
+import { AmgharArchivalPage } from './ui/AmgharArchivalPage';
 import { AmgharProfileDrawer } from './ui/AmgharProfileDrawer';
+import { ArchivalPortraitId } from './ui/ArchivalPortraits';
 import { ArchitectureGraphView } from './ui/ArchitectureGraphModal';
-import { BottomDock, DockTab } from './ui/BottomDock';
+import { ArchivalManagementSection, BottomDock, DockTab } from './ui/BottomDock';
 import { EventModal, NeighborActionModal, StatusModal } from './ui/Modals';
 import { TitleScreen } from './ui/TitleScreen';
 import { TopBar } from './ui/TopBar';
@@ -79,6 +81,9 @@ export default function App() {
   const [isArchitectureModalOpen, setIsArchitectureModalOpen] = useState<boolean>(false);
   const [isWorldMapModalOpen, setIsWorldMapModalOpen] = useState<boolean>(false);
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState<boolean>(false);
+  const [isArchivalPageOpen, setIsArchivalPageOpen] = useState<boolean>(false);
+  const [archivalPortraitId, setArchivalPortraitId] = useState<ArchivalPortraitId>('amghar');
+  const [archivalSection, setArchivalSection] = useState<ArchivalManagementSection>('lineage');
   const [activeMapMode, setActiveMapMode] = useState<MapModeType>('topographic_1870');
 
   const [activeTab, setActiveTab] = useState<DockTab>('build');
@@ -219,8 +224,8 @@ export default function App() {
       const isAr = settingsRef.current.language === 'ar';
       showToast(
         isAr
-          ? `تقدم الزمن ${days} أيام ← يوم ${next.dayInSeason} (${next.year}م)`
-          : `Advanced ${days} days → ${next.season.toUpperCase()} Day ${next.dayInSeason}, ${next.year}`
+          ? `تقدم الزمن ${days} أيام ← يوم ${next.dayInSeason} (${next.year}م / ${next.hijriYear}هـ)`
+          : `Advanced ${days} days → ${next.season.toUpperCase()} Day ${next.dayInSeason}, ${next.year} AD / ${next.hijriYear} AH`
       );
     },
     [commitValley, showToast]
@@ -852,7 +857,7 @@ export default function App() {
         />
       )}
 
-      {/* 3. Active Playing HUD (Top Perimeter Bar + Collapsible Left 1/3 Amghar Profile Drawer + Full-Screen 1870 Map Page + Bottom Dock) */}
+      {/* 3. Active Playing HUD (Top Perimeter Bar + Collapsible Left 1/3 Amghar Profile Drawer + Full-Screen 1870 Map Page + Dedicated 1870 Archival Page + Bottom Dock) */}
       {lifecycleState !== 'title' && (
         <>
           <TopBar
@@ -863,6 +868,7 @@ export default function App() {
             isHudCollapsed={isHudCollapsed}
             isProfileDrawerOpen={isProfileDrawerOpen}
             isMapPageOpen={isWorldMapModalOpen}
+            isArchivalPageOpen={isArchivalPageOpen}
             activeMapMode={activeMapMode}
             timeSpeed={timeSpeed}
             onToggleProfileDrawer={() => {
@@ -871,6 +877,7 @@ export default function App() {
             }}
             onToggleMapPage={(mode) => {
               soundEngine.playClick();
+              setIsArchivalPageOpen(false);
               if (mode) {
                 setActiveMapMode(mode);
                 setIsWorldMapModalOpen(true);
@@ -878,10 +885,18 @@ export default function App() {
                 setIsWorldMapModalOpen((open) => !open);
               }
             }}
+            onToggleArchivalPage={() => {
+              soundEngine.playClick();
+              setArchivalSection('lineage');
+              setIsWorldMapModalOpen(false);
+              setIsArchivalPageOpen((open) => !open);
+            }}
             onSelectDockTab={(tab) => {
               soundEngine.playClick();
               setActiveTab(tab);
-              setIsHudCollapsed(false);
+              setArchivalSection(tab);
+              setIsWorldMapModalOpen(false);
+              setIsArchivalPageOpen(true);
             }}
             onSetTimeSpeed={(spd) => {
               soundEngine.playClick();
@@ -890,6 +905,7 @@ export default function App() {
             onAdvanceTime={handleAdvanceTime}
             onOpenWorldMapModal={() => {
               soundEngine.playClick();
+              setIsArchivalPageOpen(false);
               setIsWorldMapModalOpen(true);
             }}
             onExitVisitMode={() => {
@@ -916,16 +932,26 @@ export default function App() {
             language={settings.language}
             onClose={() => setIsProfileDrawerOpen(false)}
             onSelectTerritory={() => {
+              setIsArchivalPageOpen(false);
               setActiveMapMode('topographic_1870');
               setIsWorldMapModalOpen(true);
             }}
             onOpenFullMapPage={() => {
+              setIsArchivalPageOpen(false);
               setActiveMapMode('topographic_1870');
               setIsWorldMapModalOpen(true);
+            }}
+            onOpenArchivalPage={(pid) => {
+              soundEngine.playClick();
+              if (pid) setArchivalPortraitId(pid);
+              setIsProfileDrawerOpen(false);
+              setIsWorldMapModalOpen(false);
+              setIsArchivalPageOpen(true);
             }}
             onVisitNeighbor={(neighbor) => {
               setIsProfileDrawerOpen(false);
               setIsWorldMapModalOpen(false);
+              setIsArchivalPageOpen(false);
               setSelectedBuildType(null);
               setSelectedBuildingId(null);
               setVisitingNeighbor(neighbor);
@@ -939,10 +965,77 @@ export default function App() {
             <div
               role="status"
               dir={isAr ? 'rtl' : 'ltr'}
-              className="fixed top-16 right-4 z-30 pointer-events-none px-3.5 py-1.5 bg-[#12151a]/95 border border-[#e5c158] rounded text-xs font-medium text-[#f4ead5] shadow-xl"
+              className="fixed top-16 right-4 z-50 pointer-events-none px-3.5 py-1.5 bg-[#12151a]/95 border border-[#e5c158] rounded text-xs font-medium text-[#f4ead5] shadow-xl"
             >
               {toastMessage}
             </div>
+          )}
+
+          {/* Dedicated Full-Screen 1870 Dynasty, Heirs & Territory Archival Page */}
+          {isArchivalPageOpen && (
+            <AmgharArchivalPage
+              valley={valley}
+              language={settings.language}
+              settings={settings}
+              initialPortraitId={archivalPortraitId}
+              initialSection={archivalSection}
+              selectedVillagerId={selectedVillagerId}
+              selectedBuildingId={selectedBuildingId}
+              onClose={() => setIsArchivalPageOpen(false)}
+              onSelectVillagerIn3D={(vid) => {
+                setSelectedVillagerId(vid);
+                setSelectedBuildingId(null);
+                setSelectedBuildType(null);
+              }}
+              onSelectBuildingIn3D={(bid) => {
+                setSelectedBuildingId(bid);
+                setSelectedVillagerId(null);
+                setSelectedBuildType(null);
+              }}
+              onSelectBuildTypeIn3D={(bType) => {
+                soundEngine.playClick();
+                setSelectedBuildType(bType);
+                setSelectedBuildingId(null);
+                setSelectedVillagerId(null);
+              }}
+              onUpgradeBuilding={handleUpgradeBuilding}
+              onUpdateRoles={handleUpdateRoles}
+              onAcceptSoukOffer={handleAcceptSoukOffer}
+              onUpdateSettings={(partial) => {
+                const next = { ...settings, ...partial };
+                if (partial.soundEnabled !== undefined) {
+                  soundEngine.setMuted(!partial.soundEnabled);
+                }
+                setSettings(next);
+                saveSettings(next);
+              }}
+              onResetValley={() => {
+                const fresh = resetValleyState(valley.amgharName, valley.name);
+                setValley(fresh);
+                setVisitingNeighbor(null);
+                showToast(
+                  isAr ? 'تمت إعادة ضبط القرية إلى ربيع 1870م.' : 'Valley reset to Spring 1870.'
+                );
+              }}
+              onTrainVillagerSkill={handleTrainVillagerSkill}
+              onAssignHouseSkill={handleAssignHouseSkill}
+              onArrangeMarriage={handleArrangeMarriage}
+              onWelcomeNewcomer={handleWelcomeNewcomer}
+              onExpandTerritory={handleExpandTerritory}
+              onForageFood={handleForageFood}
+              onOpenWorldMap={() => {
+                setIsArchivalPageOpen(false);
+                setActiveMapMode('topographic_1870');
+                setIsWorldMapModalOpen(true);
+              }}
+              onVisitNeighbor={(neighbor) => {
+                setIsArchivalPageOpen(false);
+                setSelectedBuildType(null);
+                setSelectedBuildingId(null);
+                setVisitingNeighbor(neighbor);
+                setIsVisitActionModalOpen(true);
+              }}
+            />
           )}
 
           {/* Dedicated Full-Screen 1870 Morocco Strategy Map Page */}
@@ -979,8 +1072,8 @@ export default function App() {
             />
           )}
 
-          {/* Minimalist Bottom Village Dock (Hidden when on the dedicated Full-Screen 1870 Map Page) */}
-          {!isWorldMapModalOpen && (
+          {/* Minimalist Bottom Village Dock (Hidden when on the dedicated Full-Screen 1870 Map or Archival Page) */}
+          {!isWorldMapModalOpen && !isArchivalPageOpen && (
             <BottomDock
               valley={valley}
               activeTab={activeTab}
@@ -1024,6 +1117,14 @@ export default function App() {
                   setSelectedBuildType(null);
                   setSelectedBuildingId(null);
                 }
+              }}
+              onOpenArchivalPage={(pid, section) => {
+                soundEngine.playClick();
+                if (pid) setArchivalPortraitId(pid);
+                if (section) setArchivalSection(section);
+                else setArchivalSection('lineage');
+                setIsWorldMapModalOpen(false);
+                setIsArchivalPageOpen(true);
               }}
               onAssignHouseSkill={handleAssignHouseSkill}
               onRotateBuilding={() => {

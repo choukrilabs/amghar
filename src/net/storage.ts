@@ -1,5 +1,5 @@
 import { generateRegionalSoukOffers, generateRegionalValleys } from '../game/raid';
-import { createInitialValleyState, tick } from '../game/tick';
+import { convertAdToAhYear, createInitialValleyState, tick } from '../game/tick';
 import { GameSettings, ValleyState } from '../game/types';
 import { createInitialVillagerRoster } from '../game/villagers';
 
@@ -20,6 +20,13 @@ export function loadSavedValley(nowMs = Date.now()): ValleyState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ValleyState;
     if (!parsed || !parsed.valleyId || !parsed.resources) return null;
+    if (typeof parsed.hijriYear !== 'number' || !Number.isFinite(parsed.hijriYear)) {
+      parsed.hijriYear = convertAdToAhYear(
+        parsed.year || 1870,
+        parsed.season || 'spring',
+        parsed.dayInSeason || 1
+      );
+    }
     if (!parsed.villagerRoster || parsed.villagerRoster.length === 0) {
       parsed.villagerRoster = createInitialVillagerRoster();
     }

@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { LanguageCode, NeighborValley, ValleyState } from '../game/types';
 import { createInitialVillagerRoster, FAMILY_LINEAGES } from '../game/villagers';
+import {
+  ArchivalPortraitAvatar,
+  ArchivalPortraitId,
+  getVillagerArchivalPortraitId,
+} from './ArchivalPortraits';
 import { Amazigh1870Icon, Amazigh1870IconName, MoroccanSealEmblem } from './Icons';
 
 export interface AmgharProfileDrawerProps {
@@ -10,6 +15,7 @@ export interface AmgharProfileDrawerProps {
   onClose: () => void;
   onSelectTerritory?: (territoryId: string) => void;
   onOpenFullMapPage?: () => void;
+  onOpenArchivalPage?: (portraitId?: ArchivalPortraitId) => void;
   onVisitNeighbor?: (neighbor: NeighborValley) => void;
   onArrangeMarriage?: () => void;
 }
@@ -109,6 +115,7 @@ interface LineageMember {
   roleAr: string;
   age: string;
   variant: 'elder_m' | 'elder_f' | 'amghar' | 'lalla' | 'youth_m' | 'youth_f';
+  portraitId: ArchivalPortraitId;
   opinion?: number;
 }
 
@@ -121,6 +128,7 @@ const PARENTS_LIST: LineageMember[] = [
     roleAr: 'الوالد الراحل',
     age: '†68',
     variant: 'elder_m',
+    portraitId: 'elder_advisor',
   },
   {
     id: 'p2',
@@ -130,6 +138,7 @@ const PARENTS_LIST: LineageMember[] = [
     roleAr: 'الوالدة',
     age: '81',
     variant: 'elder_f',
+    portraitId: 'amghar_wife',
     opinion: 23,
   },
 ];
@@ -143,6 +152,7 @@ const GRANDPARENTS_LIST: LineageMember[] = [
     roleAr: 'الجد للأب',
     age: '†74',
     variant: 'elder_m',
+    portraitId: 'elder_advisor',
   },
   {
     id: 'gp2',
@@ -152,6 +162,7 @@ const GRANDPARENTS_LIST: LineageMember[] = [
     roleAr: 'الجدة للأب',
     age: '†70',
     variant: 'elder_f',
+    portraitId: 'amghar_wife',
   },
   {
     id: 'gp3',
@@ -161,6 +172,7 @@ const GRANDPARENTS_LIST: LineageMember[] = [
     roleAr: 'الجد للأم',
     age: '†79',
     variant: 'elder_m',
+    portraitId: 'amghar',
   },
   {
     id: 'gp4',
@@ -170,6 +182,7 @@ const GRANDPARENTS_LIST: LineageMember[] = [
     roleAr: 'الجدة للأم',
     age: '†72',
     variant: 'elder_f',
+    portraitId: 'daughter_in_law',
   },
 ];
 
@@ -180,8 +193,9 @@ const CHILDREN_LIST: LineageMember[] = [
     nameAr: 'أمزوارو سيدي يوسف',
     roleEn: 'Player Heir',
     roleAr: 'ولي العهد (أمزوارو)',
-    age: '26',
+    age: '37',
     variant: 'youth_m',
+    portraitId: 'oldest_son_heir',
     opinion: 18,
   },
   {
@@ -190,19 +204,43 @@ const CHILDREN_LIST: LineageMember[] = [
     nameAr: 'لالة زينب',
     roleEn: 'Daughter',
     roleAr: 'الابنة',
-    age: '21',
+    age: '22',
     variant: 'youth_f',
+    portraitId: 'daughter',
     opinion: 25,
   },
   {
     id: 'ch3',
-    nameEn: 'Idir u-Hassan',
-    nameAr: 'إيدير بن الحسن',
-    roleEn: 'Younger Son',
-    roleAr: 'الابن الأصغر',
-    age: '17',
+    nameEn: 'Idir u-Youssef',
+    nameAr: 'إيدير بن يوسف',
+    roleEn: 'Grandson',
+    roleAr: 'الحفيد الشاب',
+    age: '16',
     variant: 'youth_m',
+    portraitId: 'teenage_grandson',
     opinion: 14,
+  },
+  {
+    id: 'ch4',
+    nameEn: 'Tuda u-Youssef',
+    nameAr: 'تودة بنت يوسف',
+    roleEn: 'Granddaughter',
+    roleAr: 'الحفيدة الصغرى',
+    age: '14',
+    variant: 'youth_f',
+    portraitId: 'young_granddaughter',
+    opinion: 21,
+  },
+  {
+    id: 'ch5',
+    nameEn: 'Tariq II u-Youssef',
+    nameAr: 'طارق الثاني بن يوسف',
+    roleEn: 'Next Heir',
+    roleAr: 'الوريث القادم',
+    age: '10',
+    variant: 'youth_m',
+    portraitId: 'young_boy_heir',
+    opinion: 19,
   },
 ];
 
@@ -215,47 +253,52 @@ const SIBLINGS_LIST: LineageMember[] = [
     roleAr: 'الأخت الكبرى',
     age: '64',
     variant: 'elder_f',
+    portraitId: 'amghar_wife',
     opinion: 12,
   },
   {
     id: 'sb2',
-    nameEn: 'Lalla Aicha',
-    nameAr: 'لالة عائشة',
-    roleEn: 'Sister',
-    roleAr: 'الأخت',
-    age: '58',
+    nameEn: 'Lalla Maryam',
+    nameAr: 'لالة مريم',
+    roleEn: 'Daughter-in-Law',
+    roleAr: 'زوجة ولي العهد',
+    age: '31',
     variant: 'lalla',
-    opinion: 9,
+    portraitId: 'daughter_in_law',
+    opinion: 19,
   },
   {
     id: 'sb3',
-    nameEn: 'Sidi Hammou',
-    nameAr: 'سيدي حمو',
-    roleEn: 'Brother (Envoys)',
-    roleAr: 'الأخ (المبعوث)',
-    age: '55',
+    nameEn: 'Sidi Mhand',
+    nameAr: 'الشيخ سيدي محند',
+    roleEn: 'Elder Advisor',
+    roleAr: 'الشيخ المستشار',
+    age: '73',
     variant: 'amghar',
-    opinion: 14,
+    portraitId: 'elder_advisor',
+    opinion: 24,
   },
   {
     id: 'sb4',
-    nameEn: 'Lalla Maryam',
-    nameAr: 'لالة مريم',
+    nameEn: 'Lalla Aicha',
+    nameAr: 'لالة عائشة',
     roleEn: 'Sister (Iligh)',
     roleAr: 'الأخت (إيليغ)',
     age: '51',
     variant: 'lalla',
-    opinion: -12,
+    portraitId: 'daughter',
+    opinion: 11,
   },
   {
     id: 'sb5',
-    nameEn: 'Amghar Lahcen',
-    nameAr: 'الأمغار لحسن',
-    roleEn: 'Brother (Khayyal)',
-    roleAr: 'الأخ (قائد الخيالة)',
-    age: '48',
+    nameEn: 'Brahim u-Moussa',
+    nameAr: 'إبراهيم أوموسى',
+    roleEn: 'Master Builder',
+    roleAr: 'مقدم البنائين',
+    age: '29',
     variant: 'youth_m',
-    opinion: 14,
+    portraitId: 'village_laborer',
+    opinion: 16,
   },
   {
     id: 'sb6',
@@ -265,84 +308,25 @@ const SIBLINGS_LIST: LineageMember[] = [
     roleAr: 'الأخ الأصغر',
     age: '44',
     variant: 'elder_m',
+    portraitId: 'oldest_son_heir',
     opinion: 8,
   },
 ];
 
-/**
- * Authentic 1870 Moroccan Amazigh Mini-Portrait SVG
- */
 const AmazighMiniPortrait: React.FC<{
-  variant: LineageMember['variant'];
+  portraitId: ArchivalPortraitId;
   deceased?: boolean;
-}> = ({ variant, deceased }) => {
-  const isFemale = variant === 'elder_f' || variant === 'lalla' || variant === 'youth_f';
-  const isElder = variant === 'elder_m' || variant === 'elder_f';
+}> = ({ portraitId, deceased }) => {
   return (
-    <svg
-      viewBox="0 0 48 56"
-      className={`w-full h-full ${deceased ? 'grayscale opacity-80' : ''}`}
-      fill="none"
-      aria-hidden="true"
-    >
-      {/* Horseshoe Arch Kasbah Backdrop */}
-      <rect width="48" height="56" fill="#17191d" />
-      <path d="M9 56V26a15 15 0 1 1 30 0v30" fill="#22252a" stroke="#6b5636" strokeWidth="1" />
-      {/* Shoulders / Burnous or Indigo Amazigh Garment */}
-      <path
-        d="M6 56c2-11 8-16 18-16s16 5 18 16"
-        fill={isFemale ? '#1e3a8a' : '#292524'}
-        stroke="#a68956"
-        strokeWidth="1"
-      />
-      {isFemale ? (
-        <>
-          {/* Silver Tizerzai Fibula Brooches & Amber Necklace */}
-          <polygon points="15,43 20,43 17.5,49" fill="#cbd5e1" />
-          <polygon points="28,43 33,43 30.5,49" fill="#cbd5e1" />
-          <path d="M17.5 44c3 3 7 3 13 0" stroke="#f59e0b" strokeWidth="1.6" strokeDasharray="2 1" />
-        </>
-      ) : (
-        /* Burnous Collar & Silver Koumya Cord */
-        <path d="M18 40l6 10 6-10" stroke="#c8a464" strokeWidth="1.3" />
-      )}
-      {/* Head & Turban / Headscarf */}
-      <ellipse cx="24" cy="25" rx="8.5" ry="10" fill="#c69c72" />
-      {isFemale ? (
-        <>
-          {/* Amazigh Headpiece & Silver Diadem (Tagemmout) */}
-          <path d="M14 23c0-8 4.5-12 10-12s10 4 10 12v14H14V23z" fill="#172554" opacity="0.65" />
-          <path d="M15 17h18" stroke="#e2e8f0" strokeWidth="2.2" />
-          <circle cx="24" cy="17" r="1.6" fill="#f59e0b" />
-        </>
-      ) : (
-        <>
-          {/* White Razza Turban */}
-          <path
-            d="M14.5 20c0-5.5 4.2-9 9.5-9s9.5 3.5 9.5 9c0 1.2-4.2 2-9.5 2s-9.5-.8-9.5-2z"
-            fill="#f5ebd6"
-            stroke="#c8a464"
-            strokeWidth="0.9"
-          />
-          <path d="M16 17.5h16" stroke="#d6c7b2" strokeWidth="1" />
-          {/* Beard */}
-          <path
-            d="M16.5 27c.8 6 3.5 8.5 7.5 8.5s6.7-2.5 7.5-8.5"
-            fill={isElder ? '#e5e7eb' : '#292524'}
-          />
-        </>
-      )}
-      {/* Eyes */}
-      <circle cx="21" cy="24" r="1" fill="#1c1917" />
-      <circle cx="27" cy="24" r="1" fill="#1c1917" />
-    </svg>
+    <ArchivalPortraitAvatar
+      portraitId={portraitId}
+      shape="square"
+      deceased={deceased}
+      className="w-full h-full"
+    />
   );
 };
 
-/**
- * Left 1/3 Docked Dark Slate Character & Dynasty Panel (Reference 1 Layout + Reference 3 1870 Moroccan Iconography)
- * Hidden when closed; opens when clicking the Top-Left Circular Amghar Profile Medallion.
- */
 export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
   isOpen,
   valley,
@@ -350,6 +334,7 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
   onClose,
   onSelectTerritory,
   onOpenFullMapPage,
+  onOpenArchivalPage,
   onVisitNeighbor,
   onArrangeMarriage,
 }) => {
@@ -543,8 +528,19 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
           </g>
         </svg>
 
-        {/* Top-Right Drawer Controls (Pin & Close X, matching Reference 1) */}
+        {/* Top-Right Drawer Controls (Archival Page, Map & Close X) */}
         <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+          {onOpenArchivalPage && (
+            <button
+              type="button"
+              onClick={() => onOpenArchivalPage('amghar')}
+              title={isAr ? 'فتح صفحة السلالة والأهل المفصلة (1870)' : 'Open Detailed 1870 Dynasty & People Page'}
+              className="px-2 h-7 rounded bg-[#6e2219]/95 hover:bg-[#8a2b20] border border-[#e5c158] flex items-center gap-1 text-[10px] font-bold text-[#fef3c7] cursor-pointer shadow"
+            >
+              <span>📜</span>
+              <span>{isAr ? 'صفحة السلالة' : 'Dynasty Page'}</span>
+            </button>
+          )}
           {onOpenFullMapPage && (
             <button
               type="button"
@@ -572,9 +568,13 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
         </div>
 
         {/* FIGURE 3 (RIGHT INSET): PLAYER HEIR (AMZWARO) */}
-        <div className="absolute bottom-2 right-3 w-[76px] bg-[#14171d]/95 border border-[#c8a464]/65 rounded overflow-hidden shadow-xl">
+        <button
+          type="button"
+          onClick={() => onOpenArchivalPage && onOpenArchivalPage('oldest_son_heir')}
+          className="absolute bottom-2 right-3 w-[76px] bg-[#14171d]/95 border border-[#c8a464]/65 rounded overflow-hidden shadow-xl cursor-pointer"
+        >
           <div className="h-[68px] w-full relative">
-            <AmazighMiniPortrait variant="youth_m" />
+            <AmazighMiniPortrait portraitId="oldest_son_heir" />
             <span className="absolute bottom-0.5 right-1 px-1 bg-[#101318]/90 text-[#4ade80] font-mono-num text-[9px] rounded">
               +18
             </span>
@@ -582,7 +582,7 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
           <div className="py-0.5 text-center text-[10px] text-[#d6cbb9] bg-[#0f1216] border-t border-[#a68956]/30 truncate px-1">
             {isAr ? 'ولي العهد (أمزوارو)' : 'Player Heir'}
           </div>
-        </div>
+        </button>
       </div>
 
       {/* 1B. NAME BAR & 1870 MOROCCAN OFFICIAL SEAL / YAZ EMBLEM */}
@@ -709,9 +709,15 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
               </div>
             </div>
           </div>
-          <span className="text-[11px] text-[#a69882] font-semibold">
-            ▸ {isAr ? 'الدبلوماسية' : 'Diplomacy'}
-          </span>
+          {onOpenArchivalPage && (
+            <button
+              type="button"
+              onClick={() => onOpenArchivalPage('amghar')}
+              className="px-2 py-0.5 bg-[#2a2117] hover:bg-[#3a2d1f] border border-[#c8a464]/50 rounded text-[10px] text-[#e5c158] cursor-pointer"
+            >
+              {isAr ? '▸ وثيقة الإمارة 1870' : '▸ 1870 Territory Sheet'}
+            </button>
+          )}
         </div>
 
         {/* "8 Titles" Row + Right-side Diplomacy Banners */}
@@ -764,7 +770,7 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
       <div className="bg-[#161a22] border-b border-[#a68956]/30 grid grid-cols-4 text-[11px] font-semibold shrink-0">
         {(
           [
-            { id: 'family', label: 'Family', count: 12 },
+            { id: 'family', label: 'Family', count: 13 },
             { id: 'jmaa', label: 'Jmaa Council', count: 5 },
             { id: 'artisans', label: 'Artisans & Souk', count: roster.length },
             { id: 'warriors', label: 'Warriors', count: Math.max(8, valley.roles.guards * 4) },
@@ -799,19 +805,21 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
                 <div className="text-[11px] text-[#a69882] mb-1 font-medium">Parents</div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {PARENTS_LIST.map((member) => (
-                    <div
+                    <button
                       key={member.id}
+                      type="button"
+                      onClick={() => onOpenArchivalPage && onOpenArchivalPage(member.portraitId)}
                       title={`${member.nameEn} (${member.roleEn})`}
-                      className="relative h-14 bg-[#181c23] border border-[#a68956]/45 rounded overflow-hidden"
+                      className="relative h-14 bg-[#181c23] border border-[#a68956]/45 rounded overflow-hidden cursor-pointer"
                     >
                       <AmazighMiniPortrait
-                        variant={member.variant}
+                        portraitId={member.portraitId}
                         deceased={member.age.startsWith('†')}
                       />
                       <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/75 text-[9px] font-mono-num rounded text-[#d6cbb9]">
                         {member.opinion !== undefined ? `+${member.opinion}` : member.age}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -820,26 +828,28 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
                 <div className="text-[11px] text-[#a69882] mb-1 font-medium">Grandparents</div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {GRANDPARENTS_LIST.map((member) => (
-                    <div
+                    <button
                       key={member.id}
+                      type="button"
+                      onClick={() => onOpenArchivalPage && onOpenArchivalPage(member.portraitId)}
                       title={`${member.nameEn} (${member.roleEn})`}
-                      className="relative h-14 bg-[#181c23] border border-[#a68956]/40 rounded overflow-hidden"
+                      className="relative h-14 bg-[#181c23] border border-[#a68956]/40 rounded overflow-hidden cursor-pointer"
                     >
-                      <AmazighMiniPortrait variant={member.variant} deceased={true} />
+                      <AmazighMiniPortrait portraitId={member.portraitId} deceased={true} />
                       <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/75 text-[9px] font-mono-num rounded text-[#9ca3af]">
                         {member.age}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Middle Row: Children (3) + Marriage Action */}
+            {/* Middle Row: Children & Grandchildren (5) + Marriage Action */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] text-[#a69882] font-medium">
-                  Children ({CHILDREN_LIST.length})
+                  Children & Heirs ({CHILDREN_LIST.length})
                 </span>
                 {onArrangeMarriage && (
                   <button
@@ -851,35 +861,39 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5">
                 {CHILDREN_LIST.map((child) => (
-                  <div
+                  <button
                     key={child.id}
+                    type="button"
+                    onClick={() => onOpenArchivalPage && onOpenArchivalPage(child.portraitId)}
                     title={`${child.nameEn} — ${child.roleEn}`}
-                    className="relative h-14 bg-[#181c23] border border-[#c8a464]/55 rounded overflow-hidden"
+                    className="relative h-14 bg-[#181c23] border border-[#c8a464]/55 rounded overflow-hidden cursor-pointer"
                   >
-                    <AmazighMiniPortrait variant={child.variant} />
+                    <AmazighMiniPortrait portraitId={child.portraitId} />
                     <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/80 text-[9px] font-mono-num text-[#4ade80] rounded">
                       +{child.opinion}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* Bottom Row: Siblings (6) */}
+            {/* Bottom Row: Siblings & Kin (6) */}
             <div>
               <div className="text-[11px] text-[#a69882] mb-1 font-medium">
-                Siblings ({SIBLINGS_LIST.length})
+                Siblings & Household ({SIBLINGS_LIST.length})
               </div>
               <div className="grid grid-cols-6 gap-1.5">
                 {SIBLINGS_LIST.map((sib) => (
-                  <div
+                  <button
                     key={sib.id}
+                    type="button"
+                    onClick={() => onOpenArchivalPage && onOpenArchivalPage(sib.portraitId)}
                     title={`${sib.nameEn} (${sib.roleEn})`}
-                    className="relative h-14 bg-[#181c23] border border-[#a68956]/45 rounded overflow-hidden"
+                    className="relative h-14 bg-[#181c23] border border-[#a68956]/45 rounded overflow-hidden cursor-pointer"
                   >
-                    <AmazighMiniPortrait variant={sib.variant} />
+                    <AmazighMiniPortrait portraitId={sib.portraitId} />
                     <span
                       className={`absolute bottom-0.5 right-0.5 px-1 bg-black/80 text-[9px] font-mono-num rounded ${
                         (sib.opinion || 0) >= 0 ? 'text-[#4ade80]' : 'text-[#f87171]'
@@ -887,7 +901,7 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
                     >
                       {(sib.opinion || 0) >= 0 ? `+${sib.opinion}` : sib.opinion}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -939,23 +953,29 @@ export const AmgharProfileDrawer: React.FC<AmgharProfileDrawerProps> = ({
             <div className="grid grid-cols-2 gap-1.5">
               {roster.slice(0, 8).map((v) => {
                 const lin = FAMILY_LINEAGES[v.lineageId];
+                const pid = getVillagerArchivalPortraitId(v);
                 return (
-                  <div
+                  <button
                     key={v.id}
-                    className="p-2 bg-[#181c23] border border-[#a68956]/35 rounded flex items-center justify-between"
+                    type="button"
+                    onClick={() => onOpenArchivalPage && onOpenArchivalPage(pid)}
+                    className="p-1.5 bg-[#181c23] hover:bg-[#232933] border border-[#a68956]/35 rounded flex items-center justify-between gap-2 text-start cursor-pointer"
                   >
-                    <div className="min-w-0">
-                      <div className="font-semibold text-[#f5ebd6] text-[11px] truncate">
-                        {isAr ? v.arName : v.name}
-                      </div>
-                      <div className="text-[10px] text-[#9ca3af] truncate">
-                        {isAr ? lin.arName : lin.name}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ArchivalPortraitAvatar portraitId={pid} shape="square" className="w-7 h-8 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-[#f5ebd6] text-[11px] truncate">
+                          {isAr ? v.arName : v.name}
+                        </div>
+                        <div className="text-[10px] text-[#9ca3af] truncate">
+                          {isAr ? lin.arName : lin.name}
+                        </div>
                       </div>
                     </div>
                     <span className="font-mono-num text-[10px] text-[#e5c158] font-bold">
                       ★{v.skillLevel}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>

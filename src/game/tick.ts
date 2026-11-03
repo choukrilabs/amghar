@@ -116,6 +116,11 @@ export function createInitialValleyState(
     lastTick: nowMs,
     gameDaysElapsed: 0,
     year: GAME_CONFIG.STARTING_YEAR,
+    hijriYear: convertAdToAhYear(
+      GAME_CONFIG.STARTING_YEAR,
+      GAME_CONFIG.STARTING_SEASON,
+      1
+    ),
     season: GAME_CONFIG.STARTING_SEASON,
     dayInSeason: 1,
     resources: { ...GAME_CONFIG.INITIAL_RESOURCES },
@@ -806,7 +811,21 @@ export function advanceGameDays(
         current.year += 1;
       }
     }
+
+    // Recalculate AH (Hijri) year accurately from AD year, season, and day progression
+    current.hijriYear = convertAdToAhYear(
+      current.year,
+      current.season,
+      current.dayInSeason
+    );
   }
+
+  // Ensure hijriYear is always synchronized even if wholeGameDays === 0
+  current.hijriYear = convertAdToAhYear(
+    current.year,
+    current.season,
+    current.dayInSeason
+  );
 
   // Round resource integers cleanly for UI and storage
   current.resources.grain = Math.round(current.resources.grain);
@@ -882,6 +901,25 @@ export function tick(valleyState: ValleyState, nowMs: number): ValleyState {
     : valleyState;
 
   next = resolveDueOrders(next, nowMs);
+
+  // Recalculate Hijri (AH) year in real-time using sub-day clock progress
+  const subDayFraction = Math.min(
+    0.9999,
+    Math.max(0, (nowMs - next.lastTick) / GAME_CONFIG.REAL_MS_PER_GAME_DAY)
+  );
+  const liveHijriYear = convertAdToAhYear(
+    next.year,
+    next.season,
+    next.dayInSeason,
+    subDayFraction
+  );
+  if (next.hijriYear !== liveHijriYear) {
+    next = {
+      ...next,
+      hijriYear: liveHijriYear,
+    };
+  }
+
   return next;
 }
 
@@ -928,3 +966,156 @@ export function rebalanceRolesForHouseholds(
   }
   return next;
 }
+
+/**
+ * Accurately converts an AD (Gregorian) year and optional seasonal/day progression into the
+ * corresponding AH (Hijri lunar) year using the classical astronomical/tabular conversion ratio
+ * (33 lunar years ≈ 32 solar years from the Hijri epoch of 622 AD).
+ *
+ * - 1870 AD (Spring Day 1) -> 1287 AH
+ * - Advances smoothly through the 120 game-day year (4 seasons × 30 days) and sub-day real-time clock ticks.
+ */
+export function convertAdToAhYear(
+  adYear: number,
+  season: Season = 'spring',
+  dayInSeason: number = 1,
+  intraDayFraction: number = 0
+): number {
+  const safeAdYear = Number.isFinite(adYear) ? adYear : GAME_CONFIG.STARTING_YEAR;
+  const seasonIdx = Math.max(0, SEASON_ORDER.indexOf(season));
+  const clampedDay = Math.max(1, Math.min(30, dayInSeason || 1));
+  const clampedFraction = Math.max(0, Math.min(0.9999, intraDayFraction || 0));
+  const yearFraction = (seasonIdx * 30 + (clampedDay - 1) + clampedFraction) / 120;
+  const fractionalAdYear = safeAdYear + yearFraction;
+  return Math.floor((fractionalAdYear - 622) * (33 / 32));
+}
+
+export interface TifinaghHistoricalDateInfo {
+  adDay: number;
+  adOrdinalEn: string;
+  adMonthEn: string;
+  adMonthAr: string;
+  adYear: number;
+  ahDay: number;
+  ahMonthEn: string;
+  ahMonthAr: string;
+  ahYear: number;
+  seasonTifinagh: string;
+  tifinaghTicker: string;
+  formattedEn: string;
+  formattedAr: string;
+  dualCalendarBadgeEn: string;
+  dualCalendarBadgeAr: string;
+  liveSolarClock: string;
+}
+
+export function formatTifinaghHistoricalDate(
+  valley: Pick<ValleyState, 'season' | 'dayInSeason' | 'year' | 'gameDaysElapsed'> & {
+    hijriYear?: number;
+    lastTick?: number;
+  },
+  nowMs: number = Date.now()
+): TifinaghHistoricalDateInfo {
+  const adDay = 13 + ((Math.max(1, valley.dayInSeason) - 1) % 18);
+  const suffix =
+    adDay % 10 === 1 && adDay !== 11
+      ? 'st'
+      : adDay % 10 === 2 && adDay !== 12
+      ? 'nd'
+      : adDay % 10 === 3 && adDay !== 13
+      ? 'rd'
+      : 'th';
+  const adOrdinalEn = `${adDay}${suffix}`;
+
+  const adMonths: Record<
+    Season,
+    { en: string; ar: string; tifinaghSeason: string; tifinaghMonth: string }
+  > = {
+    spring: {
+      en: 'June',
+      ar: 'يونيو',
+      tifinaghSeason: 'ⵜⴰⴼⵙⵓⵜ',
+      tifinaghMonth: 'ⵢⵓⵏⵢⵓ',
+    },
+    summer: {
+      en: 'August',
+      ar: 'أغسطس',
+      tifinaghSeason: 'ⴰⵏⴱⴷⵓ',
+      tifinaghMonth: 'ⵖⵓⵛⵜ',
+    },
+    autumn: {
+      en: 'October',
+      ar: 'أكتوبر',
+      tifinaghSeason: 'ⴰⵎⵡⴰⵏ',
+      tifinaghMonth: 'ⴽⵟⵓⴱⵕ',
+    },
+    winter: {
+      en: 'January',
+      ar: 'يناير',
+      tifinaghSeason: 'ⵜⴰⴳⵔⵙⵜ',
+      tifinaghMonth: 'ⵉⵏⵏⴰⵢⵔ',
+    },
+  };
+
+  const ahMonths: Record<Season, { en: string; ar: string; tifinagh: string }> = {
+    spring: { en: 'Rabi al-Awwal', ar: 'ربيع الأول', tifinagh: 'ⵔⴰⴱⵉⵄ' },
+    summer: { en: 'Jumada al-Akhirah', ar: 'جمادى الآخرة', tifinagh: 'ⵊⵓⵎⴰⴷⴰ' },
+    autumn: { en: 'Ramadan', ar: 'رمضان', tifinagh: 'ⵔⴰⵎⴰⴹⴰⵏ' },
+    winter: { en: 'Dhu al-Hijjah', ar: 'ذو الحجة', tifinagh: 'ⴷⵓ ⵍⵃⵉⵊⵊⴰ' },
+  };
+
+  const mInfo = adMonths[valley.season] || adMonths.spring;
+  const hInfo = ahMonths[valley.season] || ahMonths.spring;
+
+  const rawSubDayMs =
+    typeof valley.lastTick === 'number' ? Math.max(0, nowMs - valley.lastTick) : 0;
+  const intraDayFraction = Math.min(
+    0.9999,
+    (rawSubDayMs % GAME_CONFIG.REAL_MS_PER_GAME_DAY) / GAME_CONFIG.REAL_MS_PER_GAME_DAY
+  );
+
+  const ahDay = 1 + ((adDay + 1) % 29);
+  const adYear = valley.year || 1870;
+  const calculatedAhYear = convertAdToAhYear(
+    adYear,
+    valley.season,
+    valley.dayInSeason,
+    intraDayFraction
+  );
+  const ahYear =
+    typeof valley.hijriYear === 'number' && valley.hijriYear > 0
+      ? Math.max(valley.hijriYear, calculatedAhYear)
+      : calculatedAhYear;
+
+  // Real-time sub-day solar clock so the ticker visibly progresses in real-time
+  const cycleSec = Math.floor((nowMs / 1000) % 86400);
+  const solarHour = 6 + ((cycleSec + adDay * 3) % 14);
+  const solarMin = Math.floor((nowMs / 1000) % 60);
+  const liveSolarClock = `${String(solarHour).padStart(2, '0')}:${String(solarMin).padStart(2, '0')}`;
+
+  const tifinaghTicker = `ⵣ ${mInfo.tifinaghSeason} · ${adDay} ${mInfo.tifinaghMonth} ${adYear} AD · ${ahDay} ${hInfo.tifinagh} ${ahYear} AH ⵣ`;
+  const formattedEn = `${adOrdinalEn} of ${mInfo.en}, ${adYear} AD · ${ahDay} ${hInfo.en}, ${ahYear} AH`;
+  const formattedAr = `${adDay} ${mInfo.ar} ${adYear}م · ${ahDay} ${hInfo.ar} ${ahYear}هـ`;
+  const dualCalendarBadgeEn = `${adOrdinalEn} ${mInfo.en} ${adYear} AD | ${ahDay} ${hInfo.en} ${ahYear} AH`;
+  const dualCalendarBadgeAr = `${adDay} ${mInfo.ar} ${adYear}م (${adYear} AD) | ${ahDay} ${hInfo.ar} ${ahYear}هـ (${ahYear} AH)`;
+
+  return {
+    adDay,
+    adOrdinalEn,
+    adMonthEn: mInfo.en,
+    adMonthAr: mInfo.ar,
+    adYear,
+    ahDay,
+    ahMonthEn: hInfo.en,
+    ahMonthAr: hInfo.ar,
+    ahYear,
+    seasonTifinagh: mInfo.tifinaghSeason,
+    tifinaghTicker,
+    formattedEn,
+    formattedAr,
+    dualCalendarBadgeEn,
+    dualCalendarBadgeAr,
+    liveSolarClock,
+  };
+}
+

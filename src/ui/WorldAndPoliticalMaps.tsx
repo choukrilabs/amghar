@@ -26,12 +26,9 @@ export interface WorldAndPoliticalMapsProps {
 }
 
 // Direct local paths to the user's 3 attached 1870 vintage engraved maps
-const MAP_IMG_EMPIRE_1870 =
-  '/assets/aistudio/cdf5649a-ca29-4e1b-9fd5-1615b04923c2_c8a8fb27.jpeg';
-const MAP_IMG_BARBARY_MOROCCO =
-  '/assets/aistudio/914c15e4-e2ba-4430-96d1-c62d529c2b6e_7722907d.jpeg';
-const MAP_IMG_MAROCCO_INSET =
-  '/assets/aistudio/pGvx5gdA_Ru8w9y0EOs8Y5LmvG9jN73aL4a5DEqqDUZf3eJp_W3_NOZvFvEQVc7d1K6IiSuGB0ufVVIpFSWckEnbj0CzEI1yeDm4MfkeBq7-lZil4FzhWrKxslzPs_f9BrNcDtnXrm22m7DKVJRKDFnOXJliXJXg0a5OWOt_CzyAotQ9jeOphHZFS-cL38vK_c55ba2b7.jpeg';
+const MAP_IMG_EMPIRE_1870 = `${import.meta.env.BASE_URL}assets/aistudio/cdf5649a-ca29-4e1b-9fd5-1615b04923c2_c8a8fb27.jpeg`;
+const MAP_IMG_BARBARY_MOROCCO = `${import.meta.env.BASE_URL}assets/aistudio/914c15e4-e2ba-4430-96d1-c62d529c2b6e_7722907d.jpeg`;
+const MAP_IMG_MAROCCO_INSET = `${import.meta.env.BASE_URL}assets/aistudio/pGvx5gdA_Ru8w9y0EOs8Y5LmvG9jN73aL4a5DEqqDUZf3eJp_W3_NOZvFvEQVc7d1K6IiSuGB0ufVVIpFSWckEnbj0CzEI1yeDm4MfkeBq7-lZil4FzhWrKxslzPs_f9BrNcDtnXrm22m7DKVJRKDFnOXJliXJXg0a5OWOt_CzyAotQ9jeOphHZFS-cL38vK_c55ba2b7.jpeg`;
 
 interface KsarHoldingNode {
   id: string;

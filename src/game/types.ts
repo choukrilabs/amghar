@@ -251,7 +251,8 @@ export interface ValleyState {
   createdAt: number;
   lastTick: number;
   gameDaysElapsed: number; // 1 season = 30 game days; 4 seasons = 120 game days = 1 game year
-  year: number; // Starts at 1870
+  year: number; // Starts at 1870 AD
+  hijriYear: number; // Calculated AH (Hijri) year based on AD year & seasonal progression (starts at 1287 AH)
   season: Season;
   dayInSeason: number; // 1 to 30
   resources: Resources;

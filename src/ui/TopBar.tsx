@@ -1,6 +1,8 @@
-import React from 'react';
-import { UI_TRANSLATIONS, WEATHER_INFO } from '../game/config';
+import React, { useEffect, useState } from 'react';
+import { SEASON_INFO, UI_TRANSLATIONS, WEATHER_INFO } from '../game/config';
+import { formatTifinaghHistoricalDate } from '../game/tick';
 import { LanguageCode, NeighborValley, ValleyState } from '../game/types';
+import { ArchivalPortraitAvatar } from './ArchivalPortraits';
 import { DockTab } from './BottomDock';
 import { Amazigh1870Icon, Amazigh1870IconName, MoroccanSealEmblem } from './Icons';
 import { MapModeType } from './WorldAndPoliticalMaps';
@@ -13,10 +15,12 @@ export interface TopBarProps {
   isHudCollapsed: boolean;
   isProfileDrawerOpen: boolean;
   isMapPageOpen: boolean;
+  isArchivalPageOpen?: boolean;
   activeMapMode: MapModeType;
   timeSpeed: number;
   onToggleProfileDrawer: () => void;
   onToggleMapPage: (mode?: MapModeType) => void;
+  onToggleArchivalPage?: () => void;
   onSelectDockTab: (tab: DockTab) => void;
   onSetTimeSpeed: (speed: number) => void;
   onAdvanceTime: (days: number) => void;
@@ -34,26 +38,6 @@ const SPEED_OPTIONS: Array<{ speed: number; label: string }> = [
   { speed: 5, label: '5×' },
 ];
 
-function format1870HistoricalDate(valley: ValleyState): string {
-  const baseDay = 13 + (valley.dayInSeason % 17);
-  const suffix =
-    baseDay % 10 === 1 && baseDay !== 11
-      ? 'st'
-      : baseDay % 10 === 2 && baseDay !== 12
-      ? 'nd'
-      : baseDay % 10 === 3 && baseDay !== 13
-      ? 'rd'
-      : 'th';
-  const monthBySeason: Record<ValleyState['season'], string> = {
-    spring: 'June',
-    summer: 'August',
-    autumn: 'October',
-    winter: 'January',
-  };
-  const hijriYear = 1287 + Math.max(0, valley.year - 1870);
-  return `${baseDay}${suffix} of ${monthBySeason[valley.season]}, ${valley.year} AD (${hijriYear} AH)`;
-}
-
 export const TopBar: React.FC<TopBarProps> = ({
   valley,
   visitingNeighbor,
@@ -61,10 +45,12 @@ export const TopBar: React.FC<TopBarProps> = ({
   isMuted,
   isProfileDrawerOpen,
   isMapPageOpen,
+  isArchivalPageOpen,
   activeMapMode,
   timeSpeed,
   onToggleProfileDrawer,
   onToggleMapPage,
+  onToggleArchivalPage,
   onSelectDockTab,
   onSetTimeSpeed,
   onAdvanceTime,
@@ -73,17 +59,24 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleMute,
   onTogglePause,
 }) => {
+  const [liveNow, setLiveNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setLiveNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const isAr = language === 'ar';
   const t = UI_TRANSLATIONS[language];
   const activeWeather = valley.weather || 'clear';
   const wInfo = WEATHER_INFO[activeWeather] || WEATHER_INFO.clear;
+  const sInfo = SEASON_INFO[valley.season] || SEASON_INFO.spring;
 
   const goldDinars = 1431 + Math.round(valley.resources.silver * 2);
   const silverDirhams = 1102 + Math.round(valley.resources.silver);
   const prestigeScore = Math.max(141, Math.round(valley.meters.prestige));
   const totalWarriors =
     120 + valley.roles.guards * 35 + valley.households * 12 + Math.round(valley.resources.arms * 4);
-  const dateText = format1870HistoricalDate(valley);
+  const dateInfo = formatTifinaghHistoricalDate(valley, liveNow);
 
   const mapModeButtons: Array<{
     mode: MapModeType;
@@ -133,7 +126,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             isProfileDrawerOpen ? 'sm:translate-x-[430px] md:translate-x-[450px]' : ''
           }`}
         >
-          {/* Circular Amghar Portrait Button with Crimson/Brass Yaz Crest Badge (Reference 2) */}
+          {/* Circular Amghar Portrait Button with Crimson/Brass Yaz Crest Badge */}
           <button
             type="button"
             aria-label={
@@ -153,30 +146,13 @@ export const TopBar: React.FC<TopBarProps> = ({
                 : 'Amghar El-Hajj Al-Hassan (Click to open Character & Dynasty Sheet)'
             }
           >
-            {/* Outer Bronze Ring & Portrait SVG */}
-            <svg viewBox="0 0 56 56" className="w-full h-full rounded-full overflow-hidden" aria-hidden="true">
-              <rect width="56" height="56" fill="#1b1f27" />
-              <path d="M10 56V26a18 18 0 1 1 36 0v30" fill="#252019" stroke="#a68956" strokeWidth="1" />
-              {/* Dark Wool Burnous */}
-              <path d="M8 56c3-13 10-19 20-19s17 6 20 19" fill="#221f1d" stroke="#c8a464" strokeWidth="1.2" />
-              {/* Sun-weathered Face & White Beard */}
-              <ellipse cx="28" cy="26" rx="10" ry="12" fill="#c6966b" />
-              <path
-                d="M19 29c1 9 4.5 13 9 13s8-4 9-13c-2.5 1.5-5.5 2.5-9 2.5s-6.5-1-9-2.5z"
-                fill="#f1f5f9"
-              />
-              {/* White Razza Turban */}
-              <path
-                d="M17 20c0-7 4.8-11 11-11s11 4 11 11c0 2-4.8 3-11 3s-11-1-11-3z"
-                fill="#f8f4ec"
-                stroke="#c8a464"
-                strokeWidth="1"
-              />
-              <circle cx="24.5" cy="24.5" r="1.1" fill="#1c1917" />
-              <circle cx="31.5" cy="24.5" r="1.1" fill="#1c1917" />
-            </svg>
+            <ArchivalPortraitAvatar
+              portraitId="amghar"
+              shape="circle"
+              className="w-full h-full"
+            />
 
-            {/* Lower-Left Ornate Moroccan Seal & Yaz (ⵣ) Crest Badge (Reference 2) */}
+            {/* Lower-Left Ornate Moroccan Seal & Yaz (ⵣ) Crest Badge */}
             <div className="absolute -bottom-1 -left-1 w-6 h-7 pointer-events-none">
               <MoroccanSealEmblem className="w-full h-full drop-shadow" />
             </div>
@@ -216,6 +192,26 @@ export const TopBar: React.FC<TopBarProps> = ({
                   : '1870 Map'}
               </span>
             </button>
+
+            {onToggleArchivalPage && (
+              <button
+                type="button"
+                onClick={() => onToggleArchivalPage()}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                  isArchivalPageOpen
+                    ? 'bg-[#c8a464] text-[#12151a]'
+                    : 'bg-[#6e2219] hover:bg-[#8a2b20] text-[#fef3c7] border border-[#d4af37]/60'
+                }`}
+                title={
+                  isAr
+                    ? 'فتح صفحة سلالة الأمغار وأهل القرية المفصلة (1870)'
+                    : 'Open Detailed 1870 Dynasty, Heirs & Territory Page'
+                }
+              >
+                <span>📜</span>
+                <span>{isAr ? 'صفحة السلالة' : 'Dynasty Page'}</span>
+              </button>
+            )}
 
             <span className="text-[#a68956]/40">|</span>
 
@@ -259,6 +255,25 @@ export const TopBar: React.FC<TopBarProps> = ({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* TOP HUD DECORATIVE TIFINAGH REAL-TIME AD & AH CALENDAR DATE TICKER */}
+          <div
+            role="timer"
+            aria-label="Top HUD Tifinagh AD and AH Real-Time Date Ticker"
+            className="hidden xl:flex items-center gap-2 bg-gradient-to-b from-[#2b1a0e]/95 to-[#1a1008]/95 border border-[#c8a464]/65 rounded-full px-3.5 py-1 shadow-xl text-xs whitespace-nowrap"
+          >
+            <span className="text-[#e5c158] font-bold tracking-wider font-mono text-[11px] whitespace-nowrap">
+              ⵣ {dateInfo.seasonTifinagh}
+            </span>
+            <span className="text-[#c8a464]/45">|</span>
+            <span className="font-mono-num font-bold text-[#f5ebd6] whitespace-nowrap">
+              {isAr ? dateInfo.formattedAr : dateInfo.formattedEn}
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-[#4d2c16] border border-[#c8a464]/40 font-mono-num text-[10px] text-[#fef3c7] whitespace-nowrap">
+              {dateInfo.liveSolarClock}
+            </span>
+            <span className="text-[#e5c158] font-bold text-[11px]">ⵣ</span>
           </div>
         </div>
 
@@ -328,10 +343,10 @@ export const TopBar: React.FC<TopBarProps> = ({
               title={isAr ? 'قرية سوس ماسة (ثلاثية الأبعاد)' : 'Home — 3D Village View'}
               onClick={() => {
                 if (isMapPageOpen) onToggleMapPage();
-                onSelectDockTab('build');
+                if (isArchivalPageOpen && onToggleArchivalPage) onToggleArchivalPage();
               }}
               className={`w-7 h-7 rounded flex items-center justify-center border cursor-pointer transition-colors ${
-                !isMapPageOpen
+                !isMapPageOpen && !isArchivalPageOpen
                   ? 'bg-[#2a2216] border-[#e5c158]'
                   : 'bg-[#181c23] hover:bg-[#232832] border-[#a68956]/35'
               }`}
@@ -395,7 +410,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
       </div>
 
-      {/* BOTTOM-RIGHT HUD: Reference 1 & 3 Circular Map-Mode Buttons + "14th of June, 1870 AD (1287 AH)" Ticker */}
+      {/* BOTTOM-RIGHT HUD: Reference 1 & 3 Circular Map-Mode Buttons + Decorative Tifinagh AD & AH Date Ticker */}
       <div className="fixed bottom-3 right-3 z-20 pointer-events-auto flex flex-col items-end gap-1.5 select-none">
         {/* Map Modes Box ("Details Map — Selecting: Holdings") */}
         <div className="bg-[#12151a]/92 backdrop-blur-md border border-[#a68956]/40 rounded px-2.5 py-2 shadow-2xl flex flex-col items-center gap-1.5">
@@ -426,49 +441,58 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         </div>
 
-        {/* Date Ticker & Speed Bar ("14th of June, 1870 AD (1287 AH)") */}
-        <div className="bg-[#12151a]/95 backdrop-blur-md border border-[#a68956]/45 rounded px-3 py-1.5 shadow-2xl flex items-center gap-2.5 text-xs">
-          <span className="font-mono-num font-semibold text-[#e5c158] whitespace-nowrap">
-            {dateText}
-          </span>
-
-          <div
-            className="flex items-center bg-[#0c0e12] border border-[#a68956]/30 rounded p-0.5"
-            role="group"
-            aria-label={isAr ? 'سرعة الزمن' : 'Time speed'}
-          >
-            {SPEED_OPTIONS.map((opt) => {
-              const active = timeSpeed === opt.speed;
-              return (
-                <button
-                  key={opt.speed}
-                  type="button"
-                  onClick={(e) => {
-                    e.currentTarget.blur();
-                    onSetTimeSpeed(opt.speed);
-                  }}
-                  className={`px-1.5 py-0.5 text-[10px] font-mono-num font-semibold rounded transition-colors cursor-pointer ${
-                    active
-                      ? 'bg-[#c8a464] text-[#12151a]'
-                      : 'text-[#9ca3af] hover:text-[#f5ebd6]'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
+        {/* Decorative Tifinagh-Styled Date Ticker & Speed Bar (Real-time AD & AH Calendars) */}
+        <div className="bg-[#12151a]/95 backdrop-blur-md border border-[#c8a464]/55 rounded px-3 py-1.5 shadow-2xl flex flex-col items-end gap-1 text-xs">
+          <div className="w-full flex items-center justify-between gap-2 text-[10px] font-mono text-[#c8a464] border-b border-[#a68956]/30 pb-0.5">
+            <span>{dateInfo.tifinaghTicker}</span>
+            <span className="font-mono-num text-[#fef3c7]">
+              {isAr ? sInfo.arName : sInfo.name} · {dateInfo.liveSolarClock}
+            </span>
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.currentTarget.blur();
-              onAdvanceTime(10);
-            }}
-            className="px-2 py-0.5 bg-[#c8a464] hover:bg-[#dab776] text-[#12151a] font-semibold text-[11px] rounded cursor-pointer whitespace-nowrap"
-          >
-            {t.advanceSeason}
-          </button>
+          <div className="flex items-center gap-2.5">
+            <span className="font-mono-num font-bold text-[#e5c158] whitespace-nowrap">
+              {isAr ? dateInfo.dualCalendarBadgeAr : dateInfo.dualCalendarBadgeEn}
+            </span>
+
+            <div
+              className="flex items-center bg-[#0c0e12] border border-[#a68956]/30 rounded p-0.5"
+              role="group"
+              aria-label={isAr ? 'سرعة الزمن' : 'Time speed'}
+            >
+              {SPEED_OPTIONS.map((opt) => {
+                const active = timeSpeed === opt.speed;
+                return (
+                  <button
+                    key={opt.speed}
+                    type="button"
+                    onClick={(e) => {
+                      e.currentTarget.blur();
+                      onSetTimeSpeed(opt.speed);
+                    }}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono-num font-semibold rounded transition-colors cursor-pointer ${
+                      active
+                        ? 'bg-[#c8a464] text-[#12151a]'
+                        : 'text-[#9ca3af] hover:text-[#f5ebd6]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.currentTarget.blur();
+                onAdvanceTime(10);
+              }}
+              className="px-2 py-0.5 bg-[#c8a464] hover:bg-[#dab776] text-[#12151a] font-semibold text-[11px] rounded cursor-pointer whitespace-nowrap"
+            >
+              {t.advanceSeason}
+            </button>
+          </div>
         </div>
       </div>
     </>

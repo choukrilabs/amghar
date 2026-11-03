@@ -329,3 +329,47 @@ test('Arabic Fusha localization covers all events, choices, reports, neighbor va
   assert.ok(invalidCheck.arReason && invalidCheck.arReason.includes('الرحى المائية'), 'Expected Arabic reason for invalid water mill placement');
 });
 
+test('Decorative Tifinagh Historical Date Ticker formats AD and AH calendars and updates with time', async () => {
+  const { formatTifinaghHistoricalDate, convertAdToAhYear } = await import('./tick');
+  const state = createInitialValleyState('الأمغار طارق', 'آيت تامدا - سوس ماسة', 1000);
+  assert.equal(state.year, 1870);
+  assert.equal(state.hijriYear, 1287);
+
+  // Verify AD-to-AH conversion utility accuracy across historical milestones
+  assert.equal(convertAdToAhYear(1850, 'spring', 1), 1266);
+  assert.equal(convertAdToAhYear(1870, 'spring', 1), 1287);
+  assert.equal(convertAdToAhYear(1871, 'spring', 1), 1288);
+  // Over 32 solar years (1870 -> 1902 AD), Hijri calendar advances by 33 lunar years (1287 -> 1320 AH)
+  assert.equal(convertAdToAhYear(1902, 'spring', 1), 1320);
+
+  const d1 = formatTifinaghHistoricalDate(state, 10000);
+  assert.equal(d1.adYear, 1870);
+  assert.equal(d1.ahYear, 1287);
+  assert.ok(d1.tifinaghTicker.includes('ⵣ'), 'Expected Tifinagh Yaz glyph in ticker');
+  assert.ok(d1.dualCalendarBadgeEn.includes('AD') && d1.dualCalendarBadgeEn.includes('AH'));
+  assert.ok(d1.dualCalendarBadgeAr.includes('1870م') && d1.dualCalendarBadgeAr.includes('1287هـ'));
+
+  const advanced = advanceGameDays(state, 10, 25000);
+  const d2 = formatTifinaghHistoricalDate(advanced, 25000);
+  assert.notEqual(d1.adDay, d2.adDay, 'Expected AD day to advance after +10 days');
+  assert.notEqual(d1.ahDay, d2.ahDay, 'Expected AH day to advance after +10 days');
+
+  // Verify real-time clock tick rolls over hijriYear in ValleyState when advancing across a full game year (120 game days = 4 seasons)
+  const midYearState = advanceGameDays(state, 60, 40000);
+  const nextYearState = advanceGameDays(midYearState, 60, 50000);
+  assert.equal(nextYearState.year, 1871);
+  assert.equal(nextYearState.hijriYear, 1288);
+
+  // Verify sub-day real-time tick updates hijriYear on the cusp of the lunar year rollover in late Winter
+  const lateWinterState = advanceGameDays(midYearState, 56, 60000); // Winter Day 27 of 1870
+  assert.equal(lateWinterState.year, 1870);
+  assert.equal(lateWinterState.hijriYear, 1287);
+  const afterLunarRollover = tick(
+    lateWinterState,
+    60000 + GAME_CONFIG.REAL_MS_PER_GAME_DAY * 2
+  );
+  assert.equal(afterLunarRollover.hijriYear, 1288);
+});
+
+
+
